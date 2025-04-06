@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Financial Charts</title>
+</head>
+<body>
+    <h1>Financial Charts</h1>
+    <h2>Spending Over Time</h2>
+    <img src="data:image/png;base64,{{ charts['spending'] }}" alt="Spending Chart">
+    <h2>Accessible Net Worth Over Time</h2>
+    <img src="data:image/png;base64,{{ charts['networth'] }}" alt="Net Worth Chart">
+    <br>
+    <a href="{{ url_for('index') }}">Back to Home</a>
+</body>
+</html>

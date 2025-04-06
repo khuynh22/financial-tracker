@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Snapshot Record</title>
+</head>
+<body>
+    <h1>Add Snapshot Record</h1>
+    <form method="POST">
+        <label>Date (YYYY-MM-DD):</label>
+        <input type="text" name="date" required><br><br>
+        {% for acc in accounts %}
+            {% if acc.type.startswith('asset') %}
+                <label>{{ acc.name }} ({{ acc.type }}):</label>
+                <input type="text" name="account_{{ acc.id }}" required><br><br>
+            {% elif acc.type == 'debt' %}
+                <h3>{{ acc.name }} (Debt)</h3>
+                <label>Current Balance:</label>
+                <input type="text" name="account_{{ acc.id }}_current" required><br>
+                <label>Statement Balance:</label>
+                <input type="text" name="account_{{ acc.id }}_statement" required><br><br>
+            {% endif %}
+        {% endfor %}
+        <input type="submit" value="Save Snapshot">
+    </form>
+    <a href="{{ url_for('index') }}">Back to Home</a>
+</body>
+</html>

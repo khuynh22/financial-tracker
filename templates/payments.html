@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Tracker</title>
+</head>
+<body>
+    <h1>Payment Tracker</h1>
+    <table border="1">
+        <tr>
+            <th>Card Name</th>
+            <th>Due Date</th>
+            <th>Amount Due</th>
+        </tr>
+        {% for payment in payments %}
+        <tr>
+            <td>{{ payment.card_name }}</td>
+            <td>{{ payment.due_date }}</td>
+            <td>${{ "%.2f"|format(payment.amount_due) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <h3>Total Payment Due: ${{ "%.2f"|format(total_due) }}</h3>
+    {% if available_cash is not none %}
+        <h3>Available Fast-Access Cash (Debit): ${{ "%.2f"|format(available_cash) }}</h3>
+    {% else %}
+        <h3>No snapshot record available to compute available cash.</h3>
+    {% endif %}
+    {% if warning %}
+        <p style="color:red;">{{ warning }}</p>
+    {% endif %}
+    <a href="{{ url_for('index') }}">Back to Home</a>
+</body>
+</html>
