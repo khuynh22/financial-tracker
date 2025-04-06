@@ -4,13 +4,14 @@
     <title>Financial Tracker</title>
 </head>
 <body>
-    <h1>Financial Tracker</h1>
+    <h1>Welcome, {{ current_user.username }}!</h1>
     <ul>
         <li><a href="{{ url_for('configure_accounts') }}">Configure Your Accounts</a></li>
         <li><a href="{{ url_for('add_snapshot') }}">Add Snapshot Record</a></li>
         <li><a href="{{ url_for('charts') }}">View Charts</a></li>
         <li><a href="{{ url_for('add_payment') }}">Add Payment Due Entry</a></li>
         <li><a href="{{ url_for('payments') }}">View Payment Tracker</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
     </ul>
 </body>
 </html>

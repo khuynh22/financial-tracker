@@ -6,9 +6,9 @@
 <body>
     <h1>Configure Your Accounts</h1>
     <form method="POST" action="{{ url_for('configure_accounts') }}">
-        <label for="account_name">Account Name:</label>
+        <label>Account Name:</label>
         <input type="text" name="account_name" required>
-        <label for="account_type">Account Type:</label>
+        <label>Account Type:</label>
         <select name="account_type">
             <option value="asset_debit">Asset - Debit (Liquid)</option>
             <option value="asset_savings">Asset - Savings</option>
@@ -17,15 +17,13 @@
         </select>
         <input type="submit" value="Add Account">
     </form>
-
     <h2>Your Current Accounts</h2>
     <ul>
         {% for acc in accounts %}
             <li>
                 {{ acc.name }} ({{ acc.type }})
-                <!-- Delete button (POST request) -->
                 <form action="{{ url_for('delete_account', account_id=acc.id) }}" method="post" style="display:inline;">
-                    <input type="submit" value="Delete" onclick="return confirm('Are you sure you want to delete this account?');">
+                    <input type="submit" value="Delete" onclick="return confirm('Delete this account?');">
                 </form>
             </li>
         {% endfor %}
