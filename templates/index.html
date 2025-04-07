@@ -13,5 +13,15 @@
         <li><a href="{{ url_for('payments') }}">View Payment Tracker</a></li>
         <li><a href="{{ url_for('logout') }}">Logout</a></li>
     </ul>
+
+    <h2>Your Latest Snapshot</h2>
+    {% if latest_snapshot %}
+        <p>Date: {{ latest_snapshot.date }}</p>
+        <p>
+            <a href="{{ url_for('edit_snapshot', snapshot_id=latest_snapshot.id) }}">Edit Latest Snapshot</a>
+        </p>
+    {% else %}
+        <p>No snapshots found. Please add a snapshot record.</p>
+    {% endif %}
 </body>
 </html>

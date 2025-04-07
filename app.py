@@ -167,7 +167,18 @@ def get_latest_fast_cash(user_id):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html')
+    # Fetch the latest snapshot for the current user (sorted by date descending, limit 1)
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT id, date FROM snapshots WHERE user_id = ? ORDER BY date DESC LIMIT 1", (current_user.id,))
+    row = c.fetchone()
+    conn.close()
+
+    latest_snapshot = None
+    if row:
+        latest_snapshot = {"id": row[0], "date": row[1]}
+
+    return render_template('index.html', latest_snapshot=latest_snapshot)
 
 # Configure accounts
 @app.route('/configure_accounts', methods=['GET', 'POST'])
@@ -202,6 +213,11 @@ def delete_account(account_id):
 @login_required
 def add_snapshot():
     accounts = get_account_config(current_user.id)
+    # Group accounts by type
+    liquid_accounts = [acc for acc in accounts if acc['type'] in ['asset_debit', 'asset_other']]
+    savings_accounts = [acc for acc in accounts if acc['type'] == 'asset_savings']
+    debt_accounts   = [acc for acc in accounts if acc['type'] == 'debt']
+
     if request.method == 'POST':
         date_str = request.form['date']
         try:
@@ -209,24 +225,29 @@ def add_snapshot():
         except ValueError:
             return "Invalid date format. Use YYYY-MM-DD.", 400
         snapshot_data = {}
-        for acc in accounts:
+
+        # Process liquid and savings asset accounts (one input per account)
+        for acc in liquid_accounts + savings_accounts:
             acc_id = str(acc['id'])
-            if acc['type'].startswith('asset'):
-                value = request.form.get(f"account_{acc_id}", "0")
-                try:
-                    snapshot_data[acc_id] = float(value)
-                except ValueError:
-                    snapshot_data[acc_id] = 0.0
-            elif acc['type'] == 'debt':
-                val_current = request.form.get(f"account_{acc_id}_current", "0")
-                val_statement = request.form.get(f"account_{acc_id}_statement", "0")
-                try:
-                    snapshot_data[acc_id] = {
-                        "current": float(val_current),
-                        "statement": float(val_statement)
-                    }
-                except ValueError:
-                    snapshot_data[acc_id] = {"current": 0.0, "statement": 0.0}
+            value = request.form.get(f"account_{acc_id}", "0")
+            try:
+                snapshot_data[acc_id] = float(value)
+            except ValueError:
+                snapshot_data[acc_id] = 0.0
+
+        # Process debt accounts (two inputs: current and statement balances)
+        for acc in debt_accounts:
+            acc_id = str(acc['id'])
+            val_current = request.form.get(f"account_{acc_id}_current", "0")
+            val_statement = request.form.get(f"account_{acc_id}_statement", "0")
+            try:
+                snapshot_data[acc_id] = {
+                    "current": float(val_current),
+                    "statement": float(val_statement)
+                }
+            except ValueError:
+                snapshot_data[acc_id] = {"current": 0.0, "statement": 0.0}
+
         conn = sqlite3.connect(DATABASE)
         c = conn.cursor()
         c.execute("INSERT INTO snapshots (user_id, date, data) VALUES (?, ?, ?)",
@@ -234,7 +255,84 @@ def add_snapshot():
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
-    return render_template('add_snapshot.html', accounts=accounts)
+    return render_template("add_snapshot.html",
+                           liquid_accounts=liquid_accounts,
+                           savings_accounts=savings_accounts,
+                           debt_accounts=debt_accounts)
+
+
+@app.route('/edit_snapshot/<int:snapshot_id>', methods=['GET', 'POST'])
+@login_required
+def edit_snapshot(snapshot_id):
+    # Retrieve the snapshot for the current user.
+    conn = sqlite3.connect(DATABASE)
+    c = conn.cursor()
+    c.execute("SELECT date, data FROM snapshots WHERE id = ? AND user_id = ?", (snapshot_id, current_user.id))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        flash("Snapshot not found.")
+        return redirect(url_for('index'))
+
+    snapshot_date, data_json = row
+    snapshot_data = json.loads(data_json)
+
+    # Get the account configuration and group them.
+    accounts = get_account_config(current_user.id)
+    liquid_accounts = [acc for acc in accounts if acc['type'] in ['asset_debit', 'asset_other']]
+    savings_accounts = [acc for acc in accounts if acc['type'] == 'asset_savings']
+    debt_accounts   = [acc for acc in accounts if acc['type'] == 'debt']
+
+    # Pre-populate each account's value from the snapshot.
+    for acc in liquid_accounts:
+        acc_id = str(acc['id'])
+        acc['value'] = snapshot_data.get(acc_id, "")
+    for acc in savings_accounts:
+        acc_id = str(acc['id'])
+        acc['value'] = snapshot_data.get(acc_id, "")
+    for acc in debt_accounts:
+        acc_id = str(acc['id'])
+        debt_info = snapshot_data.get(acc_id, {"current": "", "statement": ""})
+        acc['current_value'] = debt_info.get("current", "")
+        acc['statement_value'] = debt_info.get("statement", "")
+
+    if request.method == 'POST':
+        # Update the snapshot data from the submitted form.
+        for acc in liquid_accounts + savings_accounts:
+            acc_id = str(acc['id'])
+            value = request.form.get(f"account_{acc_id}", "0")
+            try:
+                snapshot_data[acc_id] = float(value)
+            except ValueError:
+                snapshot_data[acc_id] = 0.0
+        for acc in debt_accounts:
+            acc_id = str(acc['id'])
+            val_current = request.form.get(f"account_{acc_id}_current", "0")
+            val_statement = request.form.get(f"account_{acc_id}_statement", "0")
+            try:
+                snapshot_data[acc_id] = {
+                    "current": float(val_current),
+                    "statement": float(val_statement)
+                }
+            except ValueError:
+                snapshot_data[acc_id] = {"current": 0.0, "statement": 0.0}
+        # Update the snapshot record.
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
+        c.execute("UPDATE snapshots SET data = ? WHERE id = ? AND user_id = ?",
+                  (json.dumps(snapshot_data), snapshot_id, current_user.id))
+        conn.commit()
+        conn.close()
+        flash("Snapshot updated successfully!")
+        return redirect(url_for('index'))
+
+    return render_template("edit_snapshot.html",
+                           date=snapshot_date,
+                           liquid_accounts=liquid_accounts,
+                           savings_accounts=savings_accounts,
+                           debt_accounts=debt_accounts,
+                           snapshot_id=snapshot_id)
+
 
 # Charts (spending and accessible net worth)
 @app.route('/charts')
@@ -289,19 +387,21 @@ def charts():
     ax1.set_xlabel('Date')
     ax1.set_ylabel('Spending')
     ax1.grid(True)
+    ax1.tick_params(axis='x', rotation=45)  # Rotate x-axis labels by 45 degrees
     buf1 = io.BytesIO()
     fig1.savefig(buf1, format='png')
     buf1.seek(0)
     charts['spending'] = base64.b64encode(buf1.getvalue()).decode('utf8')
     plt.close(fig1)
 
-    # Accessible net worth chart
+    # Accessible Net Worth Chart
     fig2, ax2 = plt.subplots()
     ax2.plot(dates, networth_list, marker='o', linestyle='-', color='green')
     ax2.set_title('Accessible Net Worth Over Time')
     ax2.set_xlabel('Date')
     ax2.set_ylabel('Accessible Net Worth')
     ax2.grid(True)
+    ax2.tick_params(axis='x', rotation=45)  # Rotate x-axis labels by 45 degrees
     buf2 = io.BytesIO()
     fig2.savefig(buf2, format='png')
     buf2.seek(0)

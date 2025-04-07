@@ -1,36 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Add Snapshot Record</title>
+    <title>Edit Snapshot Record</title>
 </head>
 <body>
-    <h1>Add Snapshot Record</h1>
+    <h1>Edit Snapshot Record (Date: {{ date }})</h1>
     <form method="POST">
-        <label>Date (YYYY-MM-DD):</label>
-        <input type="text" name="date" required><br><br>
-
         <h2>Liquid Assets</h2>
         {% for acc in liquid_accounts %}
             <label>{{ acc.name }} ({{ acc.type }}):</label>
-            <input type="text" name="account_{{ acc.id }}" required><br><br>
+            <input type="text" name="account_{{ acc.id }}" value="{{ acc.value }}" required><br><br>
         {% endfor %}
 
         <h2>Savings</h2>
         {% for acc in savings_accounts %}
             <label>{{ acc.name }} ({{ acc.type }}):</label>
-            <input type="text" name="account_{{ acc.id }}" required><br><br>
+            <input type="text" name="account_{{ acc.id }}" value="{{ acc.value }}" required><br><br>
         {% endfor %}
 
         <h2>Debt Accounts</h2>
         {% for acc in debt_accounts %}
             <h3>{{ acc.name }} (Debt)</h3>
             <label>Current Balance:</label>
-            <input type="text" name="account_{{ acc.id }}_current" required><br>
+            <input type="text" name="account_{{ acc.id }}_current" value="{{ acc.current_value }}" required><br>
             <label>Statement Balance:</label>
-            <input type="text" name="account_{{ acc.id }}_statement" required><br><br>
+            <input type="text" name="account_{{ acc.id }}_statement" value="{{ acc.statement_value }}" required><br><br>
         {% endfor %}
 
-        <input type="submit" value="Save Snapshot">
+        <input type="submit" value="Update Snapshot">
     </form>
     <a href="{{ url_for('index') }}">Back to Home</a>
 </body>
